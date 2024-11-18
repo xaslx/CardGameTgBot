@@ -26,6 +26,21 @@ async def start_cmd(message: Message):
 
 
 
+@router.message(StateFilter(default_state), F.text.in_(['Отменить игру ⛔️', '/cancel']))
+async def process_cancel_command(message: Message):
+    await message.answer(text='Отменять нечего.\n\n')
+
+
+@router.message(~StateFilter(default_state), F.text.in_(['Отменить игру ⛔️', '/cancel']))
+async def process_cancel_command_state(message: Message, state: FSMContext):
+    await message.answer(
+        text='Вы отменили игру',
+        reply_markup=get_kb_main_menu()
+    )
+    await state.clear()
+
+
+
 @router.message(StateFilter(default_state), F.text.in_(['Таблица лидеров 🏆', '/leadership']))
 async def get_leadership(message: Message, session: AsyncSession):
     all_users: list[User] = await UserRepository.find_best_rating(session=session)
@@ -117,7 +132,7 @@ async def game(message: Message, state: FSMContext, session: AsyncSession):
     user: User = await UserRepository.find_one_or_none(session=session, user_id=message.from_user.id)
 
     if my_total_score > 21:
-        await UserRepository.update(session=session, id=user.id, losses=user.losses + 1, games=user.games + 1)
+        await UserRepository.update(session=session, id=user.id, losses=user.losses + 1, games=user.games + 1, rating=user.rating - random_rating)
         await state.clear()
         return await message.answer(
             text=
