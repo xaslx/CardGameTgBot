@@ -1,16 +1,13 @@
-from sre_parse import State
-from typing import Any
 from aiogram import F, Router
-from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram.filters import CommandStart, StateFilter
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.lexicon.lexicon_ru import LEXICON_RU, CARDS_RU, CARDS_SUIT, ALL_CARDS
+from src.lexicon.lexicon_ru import LEXICON_RU, ALL_CARDS
 from src.models.user import User
 from src.repositories.user import UserRepository
-from src.schemas.user import UserCreate
 import random
 from src.states.states import Game
 from src.keyboards.user_keyboards.keyboards import get_keyboard, get_kb_main_menu
@@ -21,16 +18,27 @@ router: Router = Router(name='user handler')
 
 
 @router.message(CommandStart(), StateFilter(default_state))
-async def start_cmd(message: Message, session: AsyncSession):
+async def start_cmd(message: Message):
     await message.answer(
         text=LEXICON_RU['/start'],
         reply_markup=get_kb_main_menu()
     )
-    user: User = await UserRepository.find_one_or_none(session=session, user_id=message.from_user.id)
-    if not user:
-        new_user: UserCreate = UserCreate(user_id=message.from_user.id)
-        await UserRepository.add(session=session, **new_user.model_dump())
-    
+
+
+
+@router.message(StateFilter(default_state), F.text.in_(['Таблица лидеров 🏆', '/leadership']))
+async def get_leadership(message: Message, session: AsyncSession):
+    all_users: list[User] = await UserRepository.find_best_rating(session=session)
+    await message.answer(
+        text=
+        '<b>Топ 10 игроков по рейтингу 👑</b>'
+    )
+    await message.answer(
+        text=
+        '\n\n'.join(f"{str(index)}: {user.name} - {str(user.rating)}" for index, user in enumerate(all_users, 1))
+    )
+
+
 
 
 @router.message(StateFilter(default_state), F.text.in_(['Правила ❓', '/rules']))
