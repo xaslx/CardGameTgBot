@@ -9,8 +9,8 @@ from src.lexicon.lexicon_ru import LEXICON_RU, ALL_CARDS
 from src.models.user import User
 from src.repositories.user import UserRepository
 import random
-from src.states.states import Game
-from src.keyboards.user_keyboards.keyboards import get_keyboard, get_kb_main_menu
+from src.states.states import GameWithBot, GameWithPlayer
+from src.keyboards.user_keyboards.keyboards import get_keyboard, get_kb_main_menu, get_mode_game, game_mode_with_player
 from src.utils.utils import get_random_cards, get_my_profile, wins_lose_draw
 
 
@@ -24,6 +24,13 @@ async def start_cmd(message: Message):
         reply_markup=get_kb_main_menu()
     )
 
+
+@router.message(StateFilter(default_state), F.text.in_(['Главное меню 💡']))
+async def main_menu(message: Message):
+    await message.answer(
+        text='<b>Главное меню</b>',
+        reply_markup=get_kb_main_menu()
+    )
 
 
 @router.message(StateFilter(default_state), F.text.in_(['Отменить игру ⛔️', '/cancel']))
@@ -46,7 +53,8 @@ async def get_leadership(message: Message, session: AsyncSession):
     all_users: list[User] = await UserRepository.find_best_rating(session=session)
     await message.answer(
         text=
-        '<b>Топ 10 игроков по рейтингу 👑</b>'
+        '<b>Топ 10 игроков по рейтингу 👑</b>\n'
+        '------------------------------------\n'
     )
     await message.answer(
         text=
@@ -73,7 +81,37 @@ async def my_profile(message: Message, session: AsyncSession):
 
 
 @router.message(StateFilter(default_state), F.text.in_(['Играть ▶️', '/play']))
-async def start_game(message: Message, state: FSMContext, session: AsyncSession):
+async def get_game_mode(message: Message):
+    await message.answer(
+        text='Выберите режим игры',
+        reply_markup=get_mode_game()
+
+    )
+
+
+
+@router.message(StateFilter(default_state), F.text.in_(['Играть с игроками 🧑‍💻']))
+async def start_game_with_player(message: Message, state: FSMContext):
+    await message.answer(
+        text='Как хотите играть? Со ставкой ? или без?', 
+        reply_markup=game_mode_with_player()
+    )
+
+
+@router.message(StateFilter(GameWithPlayer.play), F.text.in_(['Играть со ставкой 💸']))
+async def game_with_player_with_bet(message: Message, state: FSMContext):
+    pass
+
+@router.message(StateFilter(GameWithPlayer.play), F.text.in_(['Играть без ставки 🤝']))
+async def game_with_player(message: Message, state: FSMContext):
+    pass
+
+
+
+
+
+@router.message(StateFilter(default_state), F.text.in_(['Играть с ботом 🤖']))
+async def start_game_with_bot(message: Message, state: FSMContext, session: AsyncSession):
     copy_cards: dict = ALL_CARDS.copy()
     my_cards, my_total_score, cards = get_random_cards(k=2, cards=copy_cards)
     bot_cards, bot_total_score, cards = get_random_cards(k=1, cards=copy_cards)
@@ -115,12 +153,12 @@ async def start_game(message: Message, state: FSMContext, session: AsyncSession)
         reply_markup=get_keyboard()
     )
 
-    await state.set_state(Game.play)    
+    await state.set_state(GameWithBot.play)    
 
 
 
-@router.message(StateFilter(Game.play), F.text == 'Взять ещё 🃏')
-async def game(message: Message, state: FSMContext, session: AsyncSession):
+@router.message(StateFilter(GameWithBot.play), F.text == 'Взять ещё 🃏')
+async def game_with_bot(message: Message, state: FSMContext, session: AsyncSession):
     data: dict = await state.get_data()
     new_card, total_score, cards = get_random_cards(k=1, cards=data['cards'])
     
@@ -164,8 +202,8 @@ async def game(message: Message, state: FSMContext, session: AsyncSession):
 
 
 
-@router.message(StateFilter(Game.play), F.text == 'Хватит 🫸')
-async def stop_game(message: Message, state: FSMContext, session: AsyncSession):
+@router.message(StateFilter(GameWithBot.play), F.text == 'Хватит 🫸')
+async def stop_game_with_bot(message: Message, state: FSMContext, session: AsyncSession):
     user: User = await UserRepository.find_one_or_none(session=session, user_id=message.from_user.id)
     data: dict = await state.get_data()
     random_rating: int = random.randint(40, 70)
@@ -184,8 +222,6 @@ async def stop_game(message: Message, state: FSMContext, session: AsyncSession):
     await state.clear()
 
     if all(card == 'Т' for card in data['Bot']['cards']):
-        random_rating: int = random.randint(40, 70)
-        user: User = await UserRepository.find_one_or_none(session=session, user_id=message.from_user.id)
         await UserRepository.update(session=session, id=user.id, losses=user.wins + 1, games=user.games + 1, rating=user.rating - random_rating)
         return await message.answer(
             text='<b>Вы Проиграли!\nУ компьютера выпало 2 туза - золотое очко</b>\n' + f'<b>Вы потеряли {random_rating} рейтинга</b>',
