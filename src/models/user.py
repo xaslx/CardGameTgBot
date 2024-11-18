@@ -10,6 +10,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[BigInteger] = mapped_column(BigInteger, unique=True)
+    name: Mapped[str]
     rating: Mapped[int] = mapped_column(default=1000)
     wins: Mapped[int] = mapped_column(default=0)
     losses: Mapped[int] = mapped_column(default=0)
