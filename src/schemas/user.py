@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
 
 class UserOut(BaseModel):
     rating: int
+    name: str
     money: int
     wins: int
     losses: int
