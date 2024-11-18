@@ -12,6 +12,8 @@ import random
 from src.states.states import GameWithBot, GameWithPlayer
 from src.keyboards.user_keyboards.keyboards import get_keyboard, get_kb_main_menu, get_mode_game, game_mode_with_player
 from src.utils.utils import get_random_cards, get_my_profile, wins_lose_draw
+from datetime import datetime, timezone, timedelta
+
 
 
 router: Router = Router(name='user handler')
@@ -31,6 +33,25 @@ async def main_menu(message: Message):
         text='<b>Главное меню</b>',
         reply_markup=get_kb_main_menu()
     )
+
+
+@router.message(StateFilter(default_state), F.text.in_(['Получить бонус 🎁', '/bonus']))
+async def get_bonus(message: Message, user: User, session: AsyncSession):
+    current_date: datetime = datetime.now(tz=timezone.utc)
+
+    if (user.last_bonus is None) or (current_date >= user.last_bonus + timedelta(days=1)):
+        await UserRepository.update(session=session, id=user.id, last_bonus=current_date, money=user.money + 1000)
+        return await message.answer(
+            text='<b>Вам начислен бонус 1000 монет\n'
+                 'Следующий бонус можно получить через 24 часа</b>'
+        )
+    
+    time_remaining: timedelta = (user.last_bonus + timedelta(days=1)) - current_date
+    await message.answer(
+        text=f'<b>Вы можете получить бонус через {time_remaining.seconds // 3600} час. и '
+                f'{(time_remaining.seconds // 60) % 60} мин.</b>'
+    )
+
 
 
 @router.message(StateFilter(default_state), F.text.in_(['Отменить игру ⛔️', '/cancel']))
@@ -53,8 +74,7 @@ async def get_leadership(message: Message, session: AsyncSession):
     all_users: list[User] = await UserRepository.find_best_rating(session=session)
     await message.answer(
         text=
-        '<b>Топ 10 игроков по рейтингу 👑</b>\n'
-        '------------------------------------\n'
+        '<b>Топ 10 игроков по рейтингу 👑</b>'
     )
     await message.answer(
         text=
