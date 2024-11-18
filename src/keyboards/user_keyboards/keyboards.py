@@ -31,9 +31,8 @@ def game_mode_with_player() -> ReplyKeyboardMarkup:
 def get_kb_main_menu() -> ReplyKeyboardMarkup:
     keyboard: ReplyKeyboardMarkup = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text='Играть ▶️')],
-            [KeyboardButton(text='Мой профиль 📊')],
-            [KeyboardButton(text='Таблица лидеров 🏆')],
+            [KeyboardButton(text='Играть ▶️'), KeyboardButton(text='Мой профиль 📊')],
+            [KeyboardButton(text='Таблица лидеров 🏆'), KeyboardButton(text='Получить бонус 🎁')],
             [KeyboardButton(text='Правила ❓')]
         ],
         resize_keyboard=True
