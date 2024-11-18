@@ -15,4 +15,5 @@ class User(Base):
     losses: Mapped[int] = mapped_column(default=0)
     games: Mapped[int] = mapped_column(default=0)
     draw: Mapped[int] = mapped_column(default=0)
+    money: Mapped[int] = mapped_column(default=1000)
     registered_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
